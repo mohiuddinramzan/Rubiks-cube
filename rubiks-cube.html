@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>রুবিকস কিউব</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #131218;
+    --panel: #1c1a24;
+    --panel-2: #232130;
+    --edge: #302d3d;
+    --text: #EDEAE3;
+    --muted: #918c9c;
+    --accent: #E8B54D;
+    --accent-dim: #705c2c;
+    --white: #f4f2ea;
+    --yellow: #f6c945;
+    --red: #d13b3b;
+    --orange: #e2792c;
+    --green: #3fa15a;
+    --blue: #3a6fd8;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin:0; padding:0; height:100%;
+    background: radial-gradient(120% 140% at 50% -10%, #201d29 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+  }
+  #app { position: relative; width:100vw; height:100vh; }
+  #cube-canvas { position:absolute; inset:0; touch-action:none; }
+
+  header.hud {
+    position:absolute; top:0; left:0; right:0;
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 18px 22px;
+    pointer-events:none;
+    z-index: 5;
+  }
+  .brand {
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700; font-size:15px; letter-spacing:0.06em;
+    text-transform:uppercase;
+    color: var(--text);
+    opacity:0.85;
+    display:flex; align-items:center; gap:8px;
+  }
+  .brand .dot { width:8px; height:8px; border-radius:2px; background:var(--accent); display:inline-block; }
+
+  .chips { display:flex; gap:10px; pointer-events:auto; }
+  .chip {
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: 10px;
+    padding: 8px 14px;
+    min-width: 84px;
+    text-align:center;
+  }
+  .chip .label {
+    font-size: 10px; letter-spacing: 0.12em; text-transform:uppercase;
+    color: var(--muted); margin-bottom:2px;
+  }
+  .chip .value {
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-size:18px;
+    color: var(--accent);
+  }
+
+  #solved-banner{
+    position:absolute; top: 70px; left:50%; transform:translateX(-50%) translateY(-8px);
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size: 15px;
+    background: linear-gradient(135deg, var(--accent), #f5d98a);
+    color:#241c05; padding: 8px 18px; border-radius: 999px;
+    opacity:0; pointer-events:none; transition: opacity .35s ease, transform .35s ease;
+    z-index: 6; letter-spacing:0.02em;
+  }
+  #solved-banner.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  footer.controls{
+    position:absolute; left:0; right:0; bottom:0;
+    display:flex; align-items:flex-end; justify-content:center;
+    gap: 22px;
+    padding: 16px 18px 18px;
+    pointer-events:none;
+    z-index:5;
+  }
+  .panel {
+    pointer-events:auto;
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: 16px;
+    padding: 12px 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+  .faces-grid {
+    display:grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px 10px;
+  }
+  .face-col { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .face-tag{
+    font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--muted);
+    letter-spacing:0.05em;
+  }
+  .sticker-btn{
+    width: 40px; height: 40px;
+    border-radius: 9px;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,0.28), inset 0 2px 0 rgba(255,255,255,0.25);
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700; font-size: 11px;
+    color: rgba(0,0,0,0.55);
+    transition: transform .08s ease, box-shadow .08s ease;
+  }
+  .sticker-btn:active{ transform: scale(0.9); box-shadow: inset 0 1px 4px rgba(0,0,0,0.45); }
+  .sticker-btn.U{ background: var(--white); }
+  .sticker-btn.D{ background: var(--yellow); }
+  .sticker-btn.L{ background: var(--orange); }
+  .sticker-btn.R{ background: var(--red); color: #fff0e8;}
+  .sticker-btn.F{ background: var(--green); color:#eafff0; }
+  .sticker-btn.B{ background: var(--blue); color:#eaf1ff; }
+
+  .side-panel{ display:flex; flex-direction:column; gap:8px; justify-content:center; }
+  .pill-btn{
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:13px;
+    border-radius: 999px; border:1px solid var(--edge);
+    padding: 10px 18px; cursor:pointer;
+    background: var(--panel-2); color: var(--text);
+    transition: background .15s ease, transform .08s ease;
+  }
+  .pill-btn:hover{ background:#2b2839; }
+  .pill-btn:active{ transform: scale(0.96); }
+  .pill-btn.primary{ background: var(--accent); color:#241c05; border-color:transparent; }
+  .pill-btn.primary:hover{ background:#f0c264; }
+
+  .hint{
+    position:absolute; bottom:16px; left:16px;
+    font-size:11px; color: var(--muted); max-width:180px;
+    pointer-events:none; line-height:1.5;
+    display:none;
+  }
+  @media (min-width: 760px){
+    .hint{ display:block; }
+  }
+
+  @media (max-width: 720px){
+    .faces-grid{ grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; }
+    footer.controls{ flex-direction:column; align-items:center; }
+    .side-panel{ flex-direction:row; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="cube-canvas"></canvas>
+
+  <header class="hud">
+    <div class="brand"><span class="dot"></span>রুবিকস কিউব</div>
+    <div class="chips">
+      <div class="chip"><div class="label">চাল</div><div class="value" id="move-count">0</div></div>
+      <div class="chip"><div class="label">সময়</div><div class="value" id="timer">00:00</div></div>
+    </div>
+  </header>
+
+  <div id="solved-banner">সলভড! 🎉</div>
+
+  <div class="hint">মাউস দিয়ে ড্র্যাগ করে ক্যামেরা ঘোরাও। নিচের বোতাম দিয়ে প্রতিটি ফেস ঘোরাও। কীবোর্ড শর্টকাট: U D L R F B (Shift = উল্টো)</div>
+
+  <footer class="controls">
+    <div class="panel">
+      <div class="faces-grid" id="faces-grid"></div>
+    </div>
+    <div class="panel side-panel">
+      <button class="pill-btn primary" id="scramble-btn">এলোমেলো করো</button>
+      <button class="pill-btn" id="reset-btn">রিসেট</button>
+    </div>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  // ---------- Scene setup ----------
+  const canvas = document.getElementById('cube-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x131218);
+
+  const camera = new THREE.PerspectiveCamera(38, window.innerWidth/window.innerHeight, 0.1, 100);
+
+  // manual orbit via spherical coords
+  const spherical = { radius: 9.5, theta: Math.PI/4, phi: Math.PI/2 - 0.5 };
+  function updateCamera(){
+    const p = new THREE.Vector3().setFromSphericalCoords(spherical.radius, spherical.phi, spherical.theta);
+    camera.position.copy(p);
+    camera.lookAt(0,0,0);
+  }
+  updateCamera();
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+  const key = new THREE.DirectionalLight(0xffffff, 0.9);
+  key.position.set(6, 9, 7);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.35);
+  fill.position.set(-6, -3, -6);
+  scene.add(fill);
+
+  function resize(){
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h);
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---------- Cube construction ----------
+  const COLORS = {
+    U: 0xf4f2ea, // white - up
+    D: 0xf6c945, // yellow - down
+    L: 0xe2792c, // orange - left
+    R: 0xd13b3b, // red - right
+    F: 0x3fa15a, // green - front
+    B: 0x3a6fd8  // blue - back
+  };
+  const BODY = 0x18161e;
+  const SPACING = 1.06;
+  const SIZE = 0.98;
+
+  const cubeGroup = new THREE.Group();
+  scene.add(cubeGroup);
+  let cubies = [];
+
+  function makeCubieMaterials(x,y,z){
+    // material order: +x,-x,+y,-y,+z,-z
+    const m = (hex) => new THREE.MeshStandardMaterial({ color: hex, roughness:0.45, metalness:0.05 });
+    return [
+      m(x===1 ? COLORS.R : BODY),
+      m(x===-1 ? COLORS.L : BODY),
+      m(y===1 ? COLORS.U : BODY),
+      m(y===-1 ? COLORS.D : BODY),
+      m(z===1 ? COLORS.F : BODY),
+      m(z===-1 ? COLORS.B : BODY),
+    ];
+  }
+
+  const geometry = new THREE.BoxGeometry(SIZE, SIZE, SIZE, 1, 1, 1);
+  // slightly round the feel with a bevel-like inset via edge lines
+  const edgesGeo = new THREE.EdgesGeometry(geometry);
+
+  function buildCube(){
+    cubies.forEach(c => cubeGroup.remove(c));
+    cubies = [];
+    for(let x=-1; x<=1; x++){
+      for(let y=-1; y<=1; y++){
+        for(let z=-1; z<=1; z++){
+          const mats = makeCubieMaterials(x,y,z);
+          const mesh = new THREE.Mesh(geometry, mats);
+          mesh.position.set(x*SPACING, y*SPACING, z*SPACING);
+          const edges = new THREE.LineSegments(edgesGeo, new THREE.LineBasicMaterial({ color:0x0a0a0d, linewidth:1 }));
+          mesh.add(edges);
+          mesh.userData.home = { x, y, z };
+          mesh.userData.pos = { x, y, z };
+          cubeGroup.add(mesh);
+          cubies.push(mesh);
+        }
+      }
+    }
+  }
+  buildCube();
+
+  // ---------- Move engine ----------
+  const MOVES = {
+    U:  { axis:'y', layer: 1, angle: -Math.PI/2 },
+    "U'":{ axis:'y', layer: 1, angle:  Math.PI/2 },
+    D:  { axis:'y', layer:-1, angle:  Math.PI/2 },
+    "D'":{ axis:'y', layer:-1, angle: -Math.PI/2 },
+    R:  { axis:'x', layer: 1, angle: -Math.PI/2 },
+    "R'":{ axis:'x', layer: 1, angle:  Math.PI/2 },
+    L:  { axis:'x', layer:-1, angle:  Math.PI/2 },
+    "L'":{ axis:'x', layer:-1, angle: -Math.PI/2 },
+    F:  { axis:'z', layer: 1, angle: -Math.PI/2 },
+    "F'":{ axis:'z', layer: 1, angle:  Math.PI/2 },
+    B:  { axis:'z', layer:-1, angle:  Math.PI/2 },
+    "B'":{ axis:'z', layer:-1, angle: -Math.PI/2 },
+  };
+  const MOVE_KEYS = Object.keys(MOVES).filter(k => !k.includes("'"));
+
+  let animating = false;
+  const queue = [];
+  let scrambling = false;
+  let moveCount = 0;
+  let timerStarted = false;
+  let timerInterval = null;
+  let startTime = 0;
+  let solved = true;
+
+  const moveCountEl = document.getElementById('move-count');
+  const timerEl = document.getElementById('timer');
+  const banner = document.getElementById('solved-banner');
+
+  function formatTime(ms){
+    const s = Math.floor(ms/1000);
+    const mm = String(Math.floor(s/60)).padStart(2,'0');
+    const ss = String(s%60).padStart(2,'0');
+    return mm+':'+ss;
+  }
+  function startTimerIfNeeded(){
+    if(timerStarted) return;
+    timerStarted = true;
+    startTime = Date.now();
+    timerInterval = setInterval(()=>{
+      timerEl.textContent = formatTime(Date.now()-startTime);
+    }, 500);
+  }
+  function stopTimer(){
+    if(timerInterval){ clearInterval(timerInterval); timerInterval=null; }
+  }
+  function resetProgress(){
+    moveCount = 0;
+    moveCountEl.textContent = '0';
+    timerStarted = false;
+    stopTimer();
+    timerEl.textContent = '00:00';
+    banner.classList.remove('show');
+    solved = true;
+  }
+
+  function doMove(name, opts){
+    opts = opts || {};
+    queue.push({ name, countIt: opts.countIt !== false, duration: opts.duration || 220 });
+    processQueue();
+  }
+
+  function processQueue(){
+    if(animating || queue.length === 0) return;
+    const job = queue.shift();
+    animating = true;
+    runMove(job.name, job.duration, () => {
+      animating = false;
+      if(job.countIt){
+        moveCount++;
+        moveCountEl.textContent = String(moveCount);
+        startTimerIfNeeded();
+        checkSolved();
+      }
+      processQueue();
+    });
+  }
+
+  const AXIS_VEC = { x: new THREE.Vector3(1,0,0), y: new THREE.Vector3(0,1,0), z: new THREE.Vector3(0,0,1) };
+
+  function runMove(name, duration, done){
+    const mv = MOVES[name];
+    const axis = mv.axis, layer = mv.layer, targetAngle = mv.angle;
+    const selected = cubies.filter(c => c.userData.pos[axis] === layer);
+    const pivot = new THREE.Group();
+    scene.add(pivot); // temp, world-space pivot at origin (cube centered at origin)
+    selected.forEach(c => pivot.attach(c));
+
+    const axisVec = AXIS_VEC[axis];
+    let progress = 0;
+    const startT = performance.now();
+
+    function step(now){
+      const t = Math.min(1, (now - startT) / duration);
+      const eased = 1 - Math.pow(1-t, 3); // ease-out cubic
+      const angle = targetAngle * eased;
+      pivot.rotation.set(0,0,0);
+      pivot.rotateOnWorldAxis(axisVec, angle);
+      if(t < 1){
+        requestAnimationFrame(step);
+      } else {
+        // finalize: reparent back to cubeGroup, snap transforms
+        selected.forEach(c => {
+          cubeGroup.attach(c);
+          // snap position to grid
+          c.position.x = Math.round(c.position.x / SPACING) * SPACING;
+          c.position.y = Math.round(c.position.y / SPACING) * SPACING;
+          c.position.z = Math.round(c.position.z / SPACING) * SPACING;
+          // snap rotation to nearest 90deg on each euler-ish axis via quaternion rounding
+          snapQuaternion(c);
+          c.userData.pos = {
+            x: Math.round(c.position.x / SPACING),
+            y: Math.round(c.position.y / SPACING),
+            z: Math.round(c.position.z / SPACING),
+          };
+        });
+        scene.remove(pivot);
+        done();
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  function snapQuaternion(obj){
+    // snap the object's rotation matrix entries to nearest 0/1/-1 to eliminate float drift
+    obj.updateMatrix();
+    const m = obj.matrix.elements.slice();
+    for(let i=0;i<16;i++){
+      if(Math.abs(m[i]) < 0.001) m[i] = 0;
+      else if(Math.abs(m[i]-1) < 0.05) m[i] = 1;
+      else if(Math.abs(m[i]+1) < 0.05) m[i] = -1;
+    }
+    const mat = new THREE.Matrix4().fromArray(m);
+    const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scl = new THREE.Vector3();
+    mat.decompose(pos, quat, scl);
+    obj.quaternion.copy(quat);
+  }
+
+  function checkSolved(){
+    const IDENTITY = new THREE.Quaternion();
+    let ok = true;
+    for(const c of cubies){
+      const h = c.userData.home, p = c.userData.pos;
+      if(h.x!==p.x || h.y!==p.y || h.z!==p.z){ ok = false; break; }
+      if(c.quaternion.angleTo(IDENTITY) > 0.05){ ok = false; break; }
+    }
+    solved = ok;
+    if(ok && moveCount > 0){
+      stopTimer();
+      banner.classList.add('show');
+    } else {
+      banner.classList.remove('show');
+    }
+  }
+
+  // ---------- UI: face buttons ----------
+  const FACES = [
+    { key:'U', label:'U', cls:'U' },
+    { key:'D', label:'D', cls:'D' },
+    { key:'L', label:'L', cls:'L' },
+    { key:'R', label:'R', cls:'R' },
+    { key:'F', label:'F', cls:'F' },
+    { key:'B', label:'B', cls:'B' },
+  ];
+  const grid = document.getElementById('faces-grid');
+  FACES.forEach(f => {
+    const col = document.createElement('div');
+    col.className = 'face-col';
+    const tag = document.createElement('div');
+    tag.className = 'face-tag';
+    tag.textContent = f.key;
+    const btnCW = document.createElement('button');
+    btnCW.className = 'sticker-btn ' + f.cls;
+    btnCW.textContent = f.key;
+    btnCW.title = f.key + ' turn';
+    btnCW.addEventListener('click', () => doMove(f.key));
+    const btnCCW = document.createElement('button');
+    btnCCW.className = 'sticker-btn ' + f.cls;
+    btnCCW.textContent = f.key + "'";
+    btnCCW.style.opacity = '0.72';
+    btnCCW.addEventListener('click', () => doMove(f.key + "'"));
+    col.appendChild(tag);
+    col.appendChild(btnCW);
+    col.appendChild(btnCCW);
+    grid.appendChild(col);
+  });
+
+  // keyboard shortcuts
+  window.addEventListener('keydown', (e) => {
+    const k = e.key.toUpperCase();
+    if(MOVE_KEYS.includes(k)){
+      const name = e.shiftKey ? (k + "'") : k;
+      doMove(name);
+    }
+  });
+
+  // ---------- Scramble / Reset ----------
+  document.getElementById('scramble-btn').addEventListener('click', () => {
+    if(scrambling) return;
+    scrambling = true;
+    resetProgress();
+    const n = 20;
+    let last = null;
+    for(let i=0;i<n;i++){
+      let candidates = MOVE_KEYS.slice();
+      if(last) candidates = candidates.filter(k => k !== last);
+      const face = candidates[Math.floor(Math.random()*candidates.length)];
+      last = face;
+      const dir = Math.random() < 0.5 ? '' : "'";
+      queue.push({ name: face+dir, countIt:false, duration: 110 });
+    }
+    queue.push({ name:'__end_scramble__', countIt:false, duration:0 });
+    processQueue();
+  });
+
+  // intercept the special end-of-scramble marker
+  const originalRunMove = runMove;
+  function runMoveWrapper(name, duration, done){
+    if(name === '__end_scramble__'){
+      scrambling = false;
+      resetProgress();
+      done();
+      return;
+    }
+    originalRunMove(name, duration, done);
+  }
+  runMove = runMoveWrapper;
+
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    queue.length = 0;
+    animating = false;
+    scrambling = false;
+    buildCube();
+    resetProgress();
+  });
+
+  // ---------- Camera drag (orbit) ----------
+  let dragging = false;
+  let lastX = 0, lastY = 0;
+  canvas.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  window.addEventListener('pointerup', () => dragging = false);
+  window.addEventListener('pointerleave', () => dragging = false);
+  window.addEventListener('pointermove', (e) => {
+    if(!dragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    spherical.theta -= dx * 0.008;
+    spherical.phi -= dy * 0.008;
+    spherical.phi = Math.max(0.35, Math.min(Math.PI-0.35, spherical.phi));
+    updateCamera();
+  });
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    spherical.radius = Math.max(6.5, Math.min(15, spherical.radius + e.deltaY*0.004));
+    updateCamera();
+  }, { passive:false });
+
+  // ---------- Render loop ----------
+  function animate(){
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  resetProgress();
+})();
+</script>
+</body>
+</html>
