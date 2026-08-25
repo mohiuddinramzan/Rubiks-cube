@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Rubiks-cube</string>
+    <string name="title_activity_main">Rubiks-cube</string>
+    <string name="package_name">com.mohiuddinramzan.rubikscube</string>
+    <string name="custom_url_scheme">com.mohiuddinramzan.rubikscube</string>
+</resources>

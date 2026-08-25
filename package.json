@@ -1,0 +1,26 @@
+{
+  "name": "rubiks-cube",
+  "version": "1.0.0",
+  "description": "ব্রাউজারে চলা একটা ইন্টারেক্টিভ 3D রুবিকস কিউব — ঘুরিয়ে দেখা যাবে, চাল দেওয়া যাবে, এলোমেলো করা যাবে এবং সলভ করা যাবে। প্রতিটা চাল কাউন্ট হয় আর সময়ও মাপা হয়।",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mohiuddinramzan/Rubiks-cube.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/mohiuddinramzan/Rubiks-cube/issues"
+  },
+  "homepage": "https://github.com/mohiuddinramzan/Rubiks-cube#readme",
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0"
+  }
+}
