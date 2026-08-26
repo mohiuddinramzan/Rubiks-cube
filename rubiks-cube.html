@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>রুবিকস কিউব</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cG9seWdvbiBwb2ludHM9IjUwLDE3LjUgODMuNSwzMy41IDUwLDUyIDE2LjUsMzMuNSIgZmlsbD0iI2Y0ZjJlYSIgc3Ryb2tlPSIjMGEwYTBkIiBzdHJva2Utd2lkdGg9IjEuOCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwb2x5Z29uIHBvaW50cz0iODMuNSwzMy41IDgzLjUsNzAuNSA1MCw4Ni41IDUwLDUyIiBmaWxsPSIjZDEzYjNiIiBzdHJva2U9IiMwYTBhMGQiIHN0cm9rZS13aWR0aD0iMS44IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PHBvbHlnb24gcG9pbnRzPSIxNi41LDMzLjUgNTAsNTIgNTAsODYuNSAxNi41LDcwLjUiIGZpbGw9IiMzZmExNWEiIHN0cm9rZT0iIzBhMGEwZCIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48L3N2Zz4=">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -50,7 +51,7 @@
     opacity:0.85;
     display:flex; align-items:center; gap:8px;
   }
-  .brand .dot { width:8px; height:8px; border-radius:2px; background:var(--accent); display:inline-block; }
+  .brand svg { width:26px; height:26px; display:inline-block; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
 
   .chips { display:flex; gap:10px; pointer-events:auto; }
   .chip {
@@ -124,7 +125,14 @@
   <canvas id="cube-canvas"></canvas>
 
   <header class="hud">
-    <div class="brand"><span class="dot"></span>রুবিকস কিউব</div>
+    <div class="brand">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+        <polygon points="50,17.5 83.5,33.5 50,52 16.5,33.5" fill="#f4f2ea" stroke="#0a0a0d" stroke-width="1.8" stroke-linejoin="round"/>
+        <polygon points="83.5,33.5 83.5,70.5 50,86.5 50,52" fill="#d13b3b" stroke="#0a0a0d" stroke-width="1.8" stroke-linejoin="round"/>
+        <polygon points="16.5,33.5 50,52 50,86.5 16.5,70.5" fill="#3fa15a" stroke="#0a0a0d" stroke-width="1.8" stroke-linejoin="round"/>
+      </svg>
+      রুবিকস কিউব
+    </div>
     <div class="chips">
       <div class="chip"><div class="label">চাল</div><div class="value" id="move-count">0</div></div>
       <div class="chip"><div class="label">সময়</div><div class="value" id="timer">00:00</div></div>
@@ -133,7 +141,7 @@
 
   <div id="solved-banner">সলভড! 🎉</div>
 
-  <div class="hint">কিউবের যেকোনো ঘরে সরাসরি ড্র্যাগ করলে সেই লেয়ার ঘুরবে। খালি জায়গায় ড্র্যাগ করলে শুধু ভিউ ঘোরে।</div>
+  <div class="hint">এক আঙুলে কিউবের ঘরে ড্র্যাগ করলে লেয়ার ঘুরবে, খালি জায়গায় ড্র্যাগ করলে ভিউ ঘোরে। দুই আঙুল দিয়ে যেকোনো জায়গায় ড্র্যাগ করলে সবসময় ভিউ ঘোরে — অন্য পাশ দেখতে এটা ব্যবহার করো।</div>
 
   <footer class="controls">
     <div class="panel">
@@ -155,7 +163,7 @@
 
   const camera = new THREE.PerspectiveCamera(38, window.innerWidth/window.innerHeight, 0.1, 100);
 
-  const spherical = { radius: 9.5, theta: Math.PI/4, phi: Math.PI/2 - 0.5 };
+  const spherical = { radius: 13.5, theta: Math.PI/4, phi: Math.PI/2 - 0.5 };
   function updateCamera(){
     const p = new THREE.Vector3().setFromSphericalCoords(spherical.radius, spherical.phi, spherical.theta);
     camera.position.copy(p);
@@ -434,8 +442,37 @@
     target.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   }
 
+  function cancelCubeDrag(){
+    if(dragState && dragState.pivot){
+      dragState.pivot.rotation.set(0,0,0);
+      finalizeSelected(dragState.selected, dragState.pivot);
+    }
+    animating = false;
+    processQueue();
+  }
+
+  const pointers = new Map();
+
   canvas.addEventListener('pointerdown', (e) => {
-    if(animating) return;
+    pointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    canvas.setPointerCapture(e.pointerId);
+
+    // a second finger always means "rotate the view", regardless of where it lands —
+    // this guarantees the user can always look at any side of the cube.
+    if(pointers.size >= 2){
+      if(dragState && dragState.mode === 'cube') cancelCubeDrag();
+      dragState = { mode:'orbit', lastX: e.clientX, lastY: e.clientY };
+      canvas.classList.add('dragging-cube');
+      return;
+    }
+
+    // while an animation is running, don't start a new layer turn — just allow free look
+    if(animating){
+      dragState = { mode:'orbit', lastX: e.clientX, lastY: e.clientY };
+      canvas.classList.add('dragging-cube');
+      return;
+    }
+
     pointerToNDC(e, pointerNDC);
     raycaster.setFromCamera(pointerNDC, camera);
     const hits = raycaster.intersectObjects(cubies, false);
@@ -451,10 +488,10 @@
       dragState = { mode:'orbit', lastX: e.clientX, lastY: e.clientY };
       canvas.classList.add('dragging-cube');
     }
-    canvas.setPointerCapture(e.pointerId);
   });
 
   window.addEventListener('pointermove', (e) => {
+    if(pointers.has(e.pointerId)) pointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
     if(!dragState) return;
 
     if(dragState.mode === 'orbit'){
@@ -520,6 +557,18 @@
     }
   });
 
+  function releasePointer(e){
+    pointers.delete(e.pointerId);
+    if(pointers.size === 0){
+      endDrag();
+    } else if(dragState && dragState.mode === 'orbit'){
+      // keep orbiting smoothly with whichever finger remains, no jump
+      const remaining = pointers.values().next().value;
+      dragState.lastX = remaining.x;
+      dragState.lastY = remaining.y;
+    }
+  }
+
   function endDrag(){
     if(!dragState) return;
     canvas.classList.remove('dragging-cube');
@@ -566,12 +615,12 @@
     requestAnimationFrame(step);
   }
 
-  window.addEventListener('pointerup', endDrag);
-  window.addEventListener('pointercancel', endDrag);
+  window.addEventListener('pointerup', releasePointer);
+  window.addEventListener('pointercancel', releasePointer);
 
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    spherical.radius = Math.max(6.5, Math.min(15, spherical.radius + e.deltaY*0.004));
+    spherical.radius = Math.max(9, Math.min(22, spherical.radius + e.deltaY*0.004));
     updateCamera();
   }, { passive:false });
 
