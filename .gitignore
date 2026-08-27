@@ -7,3 +7,4 @@ android/.idea/
 android/captures/
 android/app/release/
 *.log
+.config/
